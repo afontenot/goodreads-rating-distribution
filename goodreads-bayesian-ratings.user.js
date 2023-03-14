@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Goodreads Bayesian Ratings
-// @version      0.0.1
+// @version      0.0.2
 // @description  Use a bayesian estimate of Goodreads rating (with percentile)
 // @author       Adam Fontenot (https://github.com/afontenot)
 // @match        https://www.goodreads.com/book/show/*
@@ -32,9 +32,9 @@ function percentile(value) {
   return 100;
 }
 
-const ratingElement = document.querySelector('span[itemprop="ratingValue"]');
+const ratingElement = document.querySelector(".RatingStatistics__rating");
 const rating = Number(ratingElement.textContent.trim());
-const votes = Number(document.querySelector('meta[itemprop="ratingCount"]').content);
+const votes = Number(document.querySelector('span[data-testid="ratingsCount"]').textContent.replace(/ratings|,/ig, "").trim());
 
 // these values determined by analysis of a large Goodreads dataset
 const fakeRating = 3.881;
@@ -42,5 +42,9 @@ const fakeVotes = 45.774;
 
 const newRating = (fakeRating * fakeVotes + rating * votes) / (fakeVotes + votes);
 
-ratingElement.textContent = newRating.toFixed(2);
-ratingElement.nextElementSibling.insertAdjacentText("afterend", " " + percentile(newRating) + "%  ");
+// Only execute script after the page loads
+// This fixes a bug where the text replacement is reverted after the page finishes loading
+window.addEventListener('load', function() {
+  ratingElement.textContent = newRating.toFixed(2);
+  ratingElement.insertAdjacentText("afterend", " " + percentile(newRating) + "%  ");
+}, false);
