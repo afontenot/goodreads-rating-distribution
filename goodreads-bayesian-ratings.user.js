@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Goodreads Bayesian Ratings
-// @version      0.0.2
+// @version      0.1.0
 // @description  Use a bayesian estimate of Goodreads rating (with percentile)
 // @author       Adam Fontenot (https://github.com/afontenot)
 // @match        https://www.goodreads.com/book/show/*
@@ -22,29 +22,33 @@ const pct = [
   4.209, 4.223, 4.238, 4.254, 4.273, 4.295, 4.320, 4.354, 4.400, 4.492
 ];
 
-
-function percentile(value) {
+const percentile = function(value) {
   for (let i = 0; i < 100; i++) {
-		if (value <= pct[i]) {
+    if (value <= pct[i]) {
       return i;
     }
   }
   return 100;
-}
-
-const ratingElement = document.querySelector(".RatingStatistics__rating");
-const rating = Number(ratingElement.textContent.trim());
-const votes = Number(document.querySelector('span[data-testid="ratingsCount"]').textContent.replace(/ratings|,/ig, "").trim());
+};
 
 // these values determined by analysis of a large Goodreads dataset
 const fakeRating = 3.881;
 const fakeVotes = 45.774;
 
+const rating = Number(document.querySelector(".RatingStatistics__rating").textContent.trim());
+const votes = Number(document.querySelector('span[data-testid="ratingsCount"]').textContent.replace(/ratings|,/ig, "").trim());
 const newRating = (fakeRating * fakeVotes + rating * votes) / (fakeVotes + votes);
 
-// Only execute script after the page loads
-// This fixes a bug where the text replacement is reverted after the page finishes loading
-window.addEventListener('load', function() {
-  ratingElement.textContent = newRating.toFixed(2);
-  ratingElement.insertAdjacentText("afterend", " " + percentile(newRating) + "%  ");
-}, false);
+const replaceRatingText = function() {
+  // disconnect and re-attach observer
+  // the callback may have been lost when DOM got rewritten
+  observer.disconnect();
+  const ratingElement = document.querySelector(".RatingStatistics__rating");
+  ratingElement.textContent = `${newRating.toFixed(2)} (${percentile(newRating)}%)`;
+  observer.observe(ratingElement.parentElement, observerConfig);
+};
+
+const observer = new MutationObserver(replaceRatingText);
+const observerConfig = {attributes: true, subtree: true};
+replaceRatingText();
+
